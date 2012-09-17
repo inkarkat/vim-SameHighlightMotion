@@ -10,7 +10,8 @@
 " REVISION	DATE		REMARKS
 "	001	15-Sep-2012	file creation
 
-function! HlgroupMotion#Jump( count, hlgroupPattern, flags )
+function! HlgroupMotion#Jump( count, hlgroupPattern, isBackward )
+    echomsg '****' . string(a:hlgroupPattern)
 endfunction
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
