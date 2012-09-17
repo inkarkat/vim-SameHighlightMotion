@@ -9,14 +9,17 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"	002	18-Sep-2012	Support wrapped search through
+"				HlgroupMotion#JumpWithWrapMessage() overload.
 "	001	18-Sep-2012	file creation
 
 function! HlgroupMotion#SearchFirstHlgroup( hlgroupPattern, flags )
     let l:originalPosition = getpos('.')[1:2]
+    let l:matchPosition = []
     let l:hasLeft = 0
 
-    while 1
-	let l:matchPosition = searchpos('.', a:flags.'W')
+    while l:matchPosition != l:originalPosition
+	let l:matchPosition = searchpos('.', a:flags)
 	if l:matchPosition == [0, 0]
 	    " We've arrived at the buffer's border.
 	    call setpos('.', [0] + l:originalPosition + [0])
@@ -37,8 +40,11 @@ function! HlgroupMotion#SearchFirstHlgroup( hlgroupPattern, flags )
 	    " Keep on searching for the next same-highlighted area.
 	endif
     endwhile
+
+    " We've wrapped around and arrived at the original position without a match.
+    return [0, 0]
 endfunction
-function! HlgroupMotion#Jump( count, hlgroupPattern, isBackward )
+function! HlgroupMotion#JumpWithWrapMessage( count, hlgroupPattern, searchName, isBackward )
 "******************************************************************************
 "* PURPOSE:
 "   Jump to the a:count'th next / previous location highlighted with a highlight
@@ -55,11 +61,19 @@ function! HlgroupMotion#Jump( count, hlgroupPattern, isBackward )
 "   a:count Number of occurrence to jump to.
 "   a:hlgroupPattern    Regular expression which the highlight group name must
 "			match.
+"   a:searchName    Object to be searched; used as the subject in the message
+"		    when the search wraps: "a:searchName hit BOTTOM, continuing
+"		    at TOP". When empty, no wrap message is issued.
+"		    When this is empty, the jump becomes non-wrapping;
+"		    otherwise, the 'wrapscan' setting applies.
 "   a:isBackward    Flag whether the jump should be backward, not forward.
 "* RETURN VALUES:
 "   List with the line and column position, or [0, 0], like searchpos().
 "******************************************************************************
-    return CountJump#CountJumpFunc(a:count, function('HlgroupMotion#SearchFirstHlgroup'), a:hlgroupPattern, (a:isBackward ? 'b' : ''))
+    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, function('HlgroupMotion#SearchFirstHlgroup'), a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''))
+endfunction
+function! HlgroupMotion#Jump( count, hlgroupPattern, isBackward )
+    return HlgroupMotion#JumpWithWrapMessage(a:count, a:hlgroupPattern, '', a:isBackward)
 endfunction
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
