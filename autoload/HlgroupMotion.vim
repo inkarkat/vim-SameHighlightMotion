@@ -3,12 +3,18 @@
 " DEPENDENCIES:
 "   - CountJump.vim autoload script, version 1.80 or higher
 "
-" Copyright: (C) 2012 Ingo Karkat
+" Copyright: (C) 2012-2017 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"	004	16-Mar-2017	When an exception is thrown during search
+"				(barring a bug in the function, that would be
+"				Vim:Interrupt triggered by the user pressing
+"				<C-c>), restore the original cursor position
+"				(and re-throw the exception, so that it can be
+"				reported by a higher-up function).
 "	003	18-Sep-2012	Handle highlight groups at the beginning and end
 "				of the buffer; in those cases, the wrap-around
 "				ends the syntax area, and for backward motion,
@@ -29,71 +35,76 @@ function! HlgroupMotion#SearchFirstHlgroup( hlgroupPattern, flags )
     let l:matchPosition = l:originalPosition
     let l:hasLeft = 0
 
-    while 1
-	if l:matchPosition == [0, 0]
-	    " We've arrived at the buffer's border.
-	    if l:isBackward && ! empty(l:goodPosition)
-		" For a backward search that already found the same-highlighted
-		" area, this means we're done.
-		call setpos('.', [0] + l:goodPosition + [0])
-		return l:goodPosition
-	    else
-		" Otherwise, we've failed.
-		call setpos('.', [0] + l:originalPosition + [0])
-		return l:matchPosition
-	    endif
-	endif
-
-	let l:currentHlgroupName = synIDattr(synIDtrans(synID(l:matchPosition[0], l:matchPosition[1], 1)), 'name')
-	if l:currentHlgroupName =~# a:hlgroupPattern
-	    if ! l:isBackward && l:matchPosition == [1, 1] && l:matchPosition != l:originalPosition
-		" This is no circular buffer; text at the buffer start is
-		" separate from the end. Break up the syntax area to correctly
-		" handle matches at both beginning and end of the buffer.
-		let l:hasLeft = 1
-	    endif
-
-	    " We're still / again inside the same-highlighted area.
-	    if l:hasLeft
-		" We've found a place in the next syntax area with the same
-		" highlighting.
-		if l:isBackward
-		    " For a backward search, go on (without wrapping now!) until
-		    " we've reached the start of the same-highlighted area.
-		    let l:goodPosition = l:matchPosition
-		    let l:flags = substitute(l:flags, '[wW]', '', 'g') . 'W'
+    try
+	while 1
+	    if l:matchPosition == [0, 0]
+		" We've arrived at the buffer's border.
+		if l:isBackward && ! empty(l:goodPosition)
+		    " For a backward search that already found the same-highlighted
+		    " area, this means we're done.
+		    call setpos('.', [0] + l:goodPosition + [0])
+		    return l:goodPosition
 		else
-		    " For a forward search, we're done.
+		    " Otherwise, we've failed.
+		    call setpos('.', [0] + l:originalPosition + [0])
 		    return l:matchPosition
 		endif
 	    endif
 
-	    if l:isBackward && l:matchPosition == [1, 1]
-		" This is no circular buffer; text at the buffer start is
-		" separate from the end. Break up the syntax area to correctly
-		" handle matches at both beginning and end of the buffer.
+	    let l:currentHlgroupName = synIDattr(synIDtrans(synID(l:matchPosition[0], l:matchPosition[1], 1)), 'name')
+	    if l:currentHlgroupName =~# a:hlgroupPattern
+		if ! l:isBackward && l:matchPosition == [1, 1] && l:matchPosition != l:originalPosition
+		    " This is no circular buffer; text at the buffer start is
+		    " separate from the end. Break up the syntax area to correctly
+		    " handle matches at both beginning and end of the buffer.
+		    let l:hasLeft = 1
+		endif
+
+		" We're still / again inside the same-highlighted area.
+		if l:hasLeft
+		    " We've found a place in the next syntax area with the same
+		    " highlighting.
+		    if l:isBackward
+			" For a backward search, go on (without wrapping now!) until
+			" we've reached the start of the same-highlighted area.
+			let l:goodPosition = l:matchPosition
+			let l:flags = substitute(l:flags, '[wW]', '', 'g') . 'W'
+		    else
+			" For a forward search, we're done.
+			return l:matchPosition
+		    endif
+		endif
+
+		if l:isBackward && l:matchPosition == [1, 1]
+		    " This is no circular buffer; text at the buffer start is
+		    " separate from the end. Break up the syntax area to correctly
+		    " handle matches at both beginning and end of the buffer.
+		    let l:hasLeft = 1
+		endif
+	    else
+		" We've just left the same-highlighted area.
 		let l:hasLeft = 1
+
+		if l:isBackward && ! empty(l:goodPosition)
+		    " For a backward search that already found the same-highlighted
+		    " area, this means we're done.
+		    call setpos('.', [0] + l:goodPosition + [0])
+		    return l:goodPosition
+		endif
+
+		" Keep on searching for the next same-highlighted area.
 	    endif
-	else
-	    " We've just left the same-highlighted area.
-	    let l:hasLeft = 1
 
-	    if l:isBackward && ! empty(l:goodPosition)
-		" For a backward search that already found the same-highlighted
-		" area, this means we're done.
-		call setpos('.', [0] + l:goodPosition + [0])
-		return l:goodPosition
+	    let l:matchPosition = searchpos('.', l:flags)
+	    if l:matchPosition == l:originalPosition
+		" We've wrapped around and arrived at the original position without a match.
+		return [0, 0]
 	    endif
-
-	    " Keep on searching for the next same-highlighted area.
-	endif
-
-	let l:matchPosition = searchpos('.', l:flags)
-	if l:matchPosition == l:originalPosition
-	    " We've wrapped around and arrived at the original position without a match.
-	    return [0, 0]
-	endif
-    endwhile
+	endwhile
+    catch /^Vim\%((\a\+)\)\=:/
+	call setpos('.', [0] + l:originalPosition + [0])
+	throw ingo#msg#MsgFromVimException()   " Avoid E608: Cannot :throw exceptions with 'Vim' prefix.
+    endtry
 endfunction
 function! HlgroupMotion#JumpWithWrapMessage( count, hlgroupPattern, searchName, isBackward )
 "******************************************************************************
