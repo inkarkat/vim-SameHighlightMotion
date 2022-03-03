@@ -12,6 +12,24 @@ function! s:GetHlgroupName( ... ) abort
     let [l:lnum, l:col] = (a:0 ? a:1 : [line('.'), col('.')])
     return synIDattr(synIDtrans(synID(l:lnum, l:col, 1)), 'name')
 endfunction
+function! s:IsUnhighlightedWhitespaceHere()
+    if ! ingo#cursor#IsOnWhitespace()
+	return 0
+    endif
+
+    let l:currentSyntaxId = synID(line('.'), col('.'), 1)
+    if synIDtrans(l:currentSyntaxId) == 0
+	" No effective syntax group here.
+	return 1
+    endif
+
+    if ! ingo#syntaxitem#HasHighlighting(l:currentSyntaxId)
+	" The syntax group has no highlighting defined.
+	return 1
+    endif
+
+    return 0
+endfunction
 
 function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner )
     let l:isBackward = (a:flags =~# 'b')
@@ -67,6 +85,10 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner
 		    " handle matches at both beginning and end of the buffer.
 		    let l:hasLeft = 1
 		endif
+	    elseif ! a:isInner && s:IsUnhighlightedWhitespaceHere()
+		" Tentatively progress; the same syntax area may continue after the
+		" plain whitespace. But if it doesn't, we do not include the
+		" whitespace.
 	    else
 		" We've just left the same-highlighted area.
 		let l:hasLeft = 1
@@ -81,7 +103,7 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner
 		" Keep on searching for the next same-highlighted area.
 	    endif
 
-	    let l:matchPosition = searchpos('.', l:flags)
+	    let l:matchPosition = searchpos('.', l:flags, (a:isInner ? line('.') : 0))
 	    if l:matchPosition == l:originalPosition
 		" We've wrapped around and arrived at the original position without a match.
 		return [0, 0]
