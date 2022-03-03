@@ -8,6 +8,11 @@
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 
+function! s:GetHlgroupName( ... ) abort
+    let [l:lnum, l:col] = (a:0 ? a:1 : [line('.'), col('.')])
+    return synIDattr(synIDtrans(synID(l:lnum, l:col, 1)), 'name')
+endfunction
+
 function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
     let l:isBackward = (a:flags =~# 'b')
     let l:flags = a:flags
@@ -32,7 +37,7 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
 		endif
 	    endif
 
-	    let l:currentHlgroupName = synIDattr(synIDtrans(synID(l:matchPosition[0], l:matchPosition[1], 1)), 'name')
+	    let l:currentHlgroupName = s:GetHlgroupName(l:matchPosition)
 	    if l:currentHlgroupName =~# a:hlgroupPattern
 		if ! l:isBackward && l:matchPosition == [1, 1] && l:matchPosition != l:originalPosition
 		    " This is no circular buffer; text at the buffer start is
