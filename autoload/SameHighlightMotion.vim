@@ -1,31 +1,12 @@
 " SameHighlightMotion.vim: Motions to text highlighted with a particular group.
 "
 " DEPENDENCIES:
-"   - CountJump.vim autoload script, version 1.80 or higher
+"   - CountJump.vim plugin, version 1.80 or higher
 "
 " Copyright: (C) 2012-2022 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
-"
-" REVISION	DATE		REMARKS
-"	004	16-Mar-2017	When an exception is thrown during search
-"				(barring a bug in the function, that would be
-"				Vim:Interrupt triggered by the user pressing
-"				<C-c>), restore the original cursor position
-"				(and re-throw the exception, so that it can be
-"				reported by a higher-up function).
-"	003	18-Sep-2012	Handle highlight groups at the beginning and end
-"				of the buffer; in those cases, the wrap-around
-"				ends the syntax area, and for backward motion,
-"				we must only search for the beginning of the
-"				syntax area without wrapping.
-"				FIX: Wrong long jump when directly before the
-"				syntax area; must first do a check before moving
-"				on.
-"	002	18-Sep-2012	Support wrapped search through
-"				HlgroupMotion#JumpWithWrapMessage() overload.
-"	001	18-Sep-2012	file creation
 
 function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
     let l:isBackward = (a:flags =~# 'b')
