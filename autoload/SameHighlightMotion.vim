@@ -87,7 +87,7 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
 	throw ingo#msg#MsgFromVimException()   " Avoid E608: Cannot :throw exceptions with 'Vim' prefix.
     endtry
 endfunction
-function! SameHighlightMotion#JumpWithWrapMessage( count, hlgroupPattern, searchName, isBackward )
+function! SameHighlightMotion#JumpToGroupWithWrapMessage( count, SearchFunction, hlgroupPattern, searchName, isBackward )
 "******************************************************************************
 "* PURPOSE:
 "   Jump to the a:count'th next / previous location highlighted with a highlight
@@ -102,6 +102,8 @@ function! SameHighlightMotion#JumpWithWrapMessage( count, hlgroupPattern, search
 "   Move cursor.
 "* INPUTS:
 "   a:count Number of occurrence to jump to.
+"   a:SearchFunction    Funcref doing the actual search; takes the following
+"                       arguments.
 "   a:hlgroupPattern    Regular expression which the highlight group name must
 "			match.
 "   a:searchName    Object to be searched; used as the subject in the message
@@ -113,10 +115,10 @@ function! SameHighlightMotion#JumpWithWrapMessage( count, hlgroupPattern, search
 "* RETURN VALUES:
 "   List with the line and column position, or [0, 0], like searchpos().
 "******************************************************************************
-    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, function('SameHighlightMotion#SearchFirstHlgroup'), a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''))
+    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, a:SearchFunction, a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''))
 endfunction
-function! SameHighlightMotion#Jump( count, hlgroupPattern, isBackward )
-    return SameHighlightMotion#JumpWithWrapMessage(a:count, a:hlgroupPattern, '', a:isBackward)
+function! SameHighlightMotion#JumpToGroup( count, SearchFunction, hlgroupPattern, isBackward )
+    return SameHighlightMotion#JumpWithWrapMessage(a:count, a:SearchFunction, a:hlgroupPattern, '', a:isBackward)
 endfunction
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
