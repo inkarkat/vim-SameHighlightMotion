@@ -13,7 +13,7 @@ function! s:GetHlgroupName( ... ) abort
     return synIDattr(synIDtrans(synID(l:lnum, l:col, 1)), 'name')
 endfunction
 
-function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
+function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner )
     let l:isBackward = (a:flags =~# 'b')
     let l:flags = a:flags
     let l:originalPosition = getpos('.')[1:2]
@@ -92,6 +92,43 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
 	throw ingo#msg#MsgFromVimException()   " Avoid E608: Cannot :throw exceptions with 'Vim' prefix.
     endtry
 endfunction
+function! SameHighlightMotion#SearchLastHlgroup( hlgroupPattern, flags, isInner )
+    " TODO
+endfunction
+function! SameHighlightMotion#Jump( count, SearchFunction, isBackward )
+    let l:hlgroupPattern = '\V\^' . s:GetHlgroupName() . '\$'
+    return CountJump#CountJumpFuncWithWrapMessage(a:count, 'same highlight search', a:isBackward, a:SearchFunction, l:hlgroupPattern, (a:isBackward ? 'b' : ''), 0)
+endfunction
+
+function! SameHighlightMotion#BeginForward( mode )
+    call CountJump#JumpFunc(a:mode, function('SameHighlightMotion#Jump'), function('SameHighlightMotion#SearchFirstHlgroup'), 0)
+endfunction
+function! SameHighlightMotion#BeginBackward( mode )
+    call CountJump#JumpFunc(a:mode, function('SameHighlightMotion#Jump'), function('SameHighlightMotion#SearchLastHlgroup'), 1)
+endfunction
+function! SameHighlightMotion#EndForward( mode )
+    call CountJump#JumpFunc(a:mode, function('SameHighlightMotion#Jump'), function('SameHighlightMotion#SearchLastHlgroup'), 0)
+endfunction
+function! SameHighlightMotion#EndBackward( mode )
+    call CountJump#JumpFunc(a:mode, function('SameHighlightMotion#Jump'), function('SameHighlightMotion#SearchFirstHlgroup'), 1)
+endfunction
+
+function! SameHighlightMotion#TextObjectBegin( count, isInner )
+    let g:CountJump_TextObjectContext.hlgroupPattern = '\V\^' . s:GetHlgroupName() . '\$'
+
+    " Move one character to the right, so that we do not jump to the previous
+    " highlighted area when we're at the start of a syntax area. CountJump will
+    " restore the original cursor position should there be no proper text
+    " object.
+    call search('.', 'W')
+
+    return CountJump#CountJumpFunc(a:count, function('SameHighlightMotion#SearchLastHlgroup'), g:CountJump_TextObjectContext.hlgroupPattern, 'bW', a:isInner)
+endfunction
+function! SameHighlightMotion#TextObjectEnd( count, isInner )
+    return CountJump#CountJumpFunc(a:count, function('SameHighlightMotion#SearchLastHlgroup'), g:CountJump_TextObjectContext.hlgroupPattern, 'W' , a:isInner)
+endfunction
+
+
 function! SameHighlightMotion#JumpToGroupWithWrapMessage( count, SearchFunction, hlgroupPattern, searchName, isBackward )
 "******************************************************************************
 "* PURPOSE:
