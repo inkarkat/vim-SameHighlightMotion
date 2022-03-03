@@ -1,9 +1,9 @@
-" HlgroupMotion.vim: Motions to text highlighted with a particular group.
+" SameHighlightMotion.vim: Motions to text highlighted with a particular group.
 "
 " DEPENDENCIES:
 "   - CountJump.vim autoload script, version 1.80 or higher
 "
-" Copyright: (C) 2012-2017 Ingo Karkat
+" Copyright: (C) 2012-2022 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
@@ -27,7 +27,7 @@
 "				HlgroupMotion#JumpWithWrapMessage() overload.
 "	001	18-Sep-2012	file creation
 
-function! HlgroupMotion#SearchFirstHlgroup( hlgroupPattern, flags )
+function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags )
     let l:isBackward = (a:flags =~# 'b')
     let l:flags = a:flags
     let l:originalPosition = getpos('.')[1:2]
@@ -106,7 +106,7 @@ function! HlgroupMotion#SearchFirstHlgroup( hlgroupPattern, flags )
 	throw ingo#msg#MsgFromVimException()   " Avoid E608: Cannot :throw exceptions with 'Vim' prefix.
     endtry
 endfunction
-function! HlgroupMotion#JumpWithWrapMessage( count, hlgroupPattern, searchName, isBackward )
+function! SameHighlightMotion#JumpWithWrapMessage( count, hlgroupPattern, searchName, isBackward )
 "******************************************************************************
 "* PURPOSE:
 "   Jump to the a:count'th next / previous location highlighted with a highlight
@@ -132,10 +132,10 @@ function! HlgroupMotion#JumpWithWrapMessage( count, hlgroupPattern, searchName, 
 "* RETURN VALUES:
 "   List with the line and column position, or [0, 0], like searchpos().
 "******************************************************************************
-    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, function('HlgroupMotion#SearchFirstHlgroup'), a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''))
+    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, function('SameHighlightMotion#SearchFirstHlgroup'), a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''))
 endfunction
-function! HlgroupMotion#Jump( count, hlgroupPattern, isBackward )
-    return HlgroupMotion#JumpWithWrapMessage(a:count, a:hlgroupPattern, '', a:isBackward)
+function! SameHighlightMotion#Jump( count, hlgroupPattern, isBackward )
+    return SameHighlightMotion#JumpWithWrapMessage(a:count, a:hlgroupPattern, '', a:isBackward)
 endfunction
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
