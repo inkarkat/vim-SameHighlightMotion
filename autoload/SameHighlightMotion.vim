@@ -196,7 +196,7 @@ function! SameHighlightMotion#JumpToGroupWithWrapMessage( count, SearchFunction,
 "* RETURN VALUES:
 "   List with the line and column position, or [0, 0], like searchpos().
 "******************************************************************************
-    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, a:SearchFunction, a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''))
+    return CountJump#CountJumpFuncWithWrapMessage(a:count, a:searchName, a:isBackward, a:SearchFunction, a:hlgroupPattern, (a:isBackward ? 'b' : '') . (empty(a:searchName) ? 'W' : ''), 0)
 endfunction
 function! SameHighlightMotion#JumpToGroup( count, SearchFunction, hlgroupPattern, isBackward )
     return SameHighlightMotion#JumpWithWrapMessage(a:count, a:SearchFunction, a:hlgroupPattern, '', a:isBackward)
