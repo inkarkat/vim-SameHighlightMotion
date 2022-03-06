@@ -1,7 +1,8 @@
 " SameHighlightMotion.vim: Motions to text highlighted with a particular group.
 "
 " DEPENDENCIES:
-"   - CountJump.vim plugin, version 1.80 or higher
+"   - CountJump.vim plugin
+"   - ingo-library.vim plugin
 "
 " Copyright: (C) 2012-2022 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
@@ -33,26 +34,17 @@ endfunction
 
 function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner )
     let l:isBackward = (a:flags =~# 'b')
-    let l:flags = a:flags
     let l:originalPosition = getpos('.')[1:2]
-    let l:goodPosition = []
-    let l:matchPosition = l:originalPosition
+    let l:matchPosition = []
     let l:hasLeft = 0
 
     try
-	while 1
+	while l:matchPosition != l:originalPosition
+	    let l:matchPosition = searchpos('.', a:flags, (a:isInner ? line('.') : 0))
 	    if l:matchPosition == [0, 0]
 		" We've arrived at the buffer's border.
-		if l:isBackward && ! empty(l:goodPosition)
-		    " For a backward search that already found the same-highlighted
-		    " area, this means we're done.
-		    call setpos('.', [0] + l:goodPosition + [0])
-		    return l:goodPosition
-		else
-		    " Otherwise, we've failed.
-		    call setpos('.', [0] + l:originalPosition + [0])
-		    return l:matchPosition
-		endif
+		call setpos('.', [0] + l:originalPosition + [0])
+		return l:matchPosition
 	    endif
 
 	    let l:currentHlgroupName = s:GetHlgroupName(l:matchPosition)
@@ -68,15 +60,7 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner
 		if l:hasLeft
 		    " We've found a place in the next syntax area with the same
 		    " highlighting.
-		    if l:isBackward
-			" For a backward search, go on (without wrapping now!) until
-			" we've reached the start of the same-highlighted area.
-			let l:goodPosition = l:matchPosition
-			let l:flags = substitute(l:flags, '[wW]', '', 'g') . 'W'
-		    else
-			" For a forward search, we're done.
-			return l:matchPosition
-		    endif
+		    return l:matchPosition
 		endif
 
 		if l:isBackward && l:matchPosition == [1, 1]
@@ -93,29 +77,62 @@ function! SameHighlightMotion#SearchFirstHlgroup( hlgroupPattern, flags, isInner
 		" We've just left the same-highlighted area.
 		let l:hasLeft = 1
 
-		if l:isBackward && ! empty(l:goodPosition)
-		    " For a backward search that already found the same-highlighted
-		    " area, this means we're done.
-		    call setpos('.', [0] + l:goodPosition + [0])
-		    return l:goodPosition
-		endif
-
 		" Keep on searching for the next same-highlighted area.
 	    endif
-
-	    let l:matchPosition = searchpos('.', l:flags, (a:isInner ? line('.') : 0))
-	    if l:matchPosition == l:originalPosition
-		" We've wrapped around and arrived at the original position without a match.
-		return [0, 0]
-	    endif
 	endwhile
+
+	" We've wrapped around and arrived at the original position without a match.
+	return [0, 0]
     catch /^Vim\%((\a\+)\)\=:/
 	call setpos('.', [0] + l:originalPosition + [0])
 	throw ingo#msg#MsgFromVimException()   " Avoid E608: Cannot :throw exceptions with 'Vim' prefix.
     endtry
 endfunction
 function! SameHighlightMotion#SearchLastHlgroup( hlgroupPattern, flags, isInner )
-    " TODO
+    let l:flags = a:flags
+    let l:originalPosition = getpos('.')[1:2]
+    let l:goodPosition = [0, 0]
+    let l:matchPosition = []
+
+    try
+	while l:matchPosition != l:originalPosition
+	    let l:matchPosition = searchpos('.', l:flags, (a:isInner ? line('.') : 0))
+	    if l:matchPosition == [0, 0]
+		" We've arrived at the buffer's border.
+		break
+	    endif
+
+	    let l:currentHlgroupName = s:GetHlgroupName(l:matchPosition)
+	    if l:currentHlgroupName =~# a:hlgroupPattern
+		if a:isInner && ingo#cursor#IsOnWhitespace()
+		    " We don't include whitespace around the syntax area in the
+		    " inner jump.
+		    continue
+		endif
+
+		" We're still / again inside the same-highlighted area.
+		let l:goodPosition = l:matchPosition
+		" Go on (without wrapping now!) until we've reached the start of the
+		" syntax area.
+		let l:flags = substitute(l:flags, '[wW]', '', 'g') . 'W'
+	    elseif ! a:isInner && s:IsUnhighlightedWhitespaceHere()
+		" Tentatively progress; the same syntax area may continue after the
+		" plain whitespace. But if it doesn't, we do not include the
+		" whitespace.
+	    elseif l:goodPosition != [0, 0]
+		" We've just left the syntax area.
+		break
+	    endif
+	    " Keep on searching for the next same-highlighted area, until we
+	    " wrap around and arrive at the original position without a match.
+	endwhile
+
+	call setpos('.', [0] + (l:goodPosition == [0, 0] ? l:originalPosition : l:goodPosition) + [0])
+	return l:goodPosition
+    catch /^Vim\%((\a\+)\)\=:/
+	call setpos('.', [0] + l:originalPosition + [0])
+	throw ingo#msg#MsgFromVimException()   " Avoid E608: Cannot :throw exceptions with 'Vim' prefix.
+    endtry
 endfunction
 function! SameHighlightMotion#Jump( count, SearchFunction, isBackward )
     let l:hlgroupPattern = '\V\^' . s:GetHlgroupName() . '\$'
